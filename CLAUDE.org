@@ -1,6 +1,27 @@
 # Project Guidelines
 
-## Key Requirements
+## :important: Key Requirements
 - Use Conventional Commits style for commit messages
 - Use `--trailer` for attribution instead of "Created by" in commit footers
 - Avoid all interactive commands (rebase -i, sudo with password prompts, non-batch emacs, etc.)
+
+## Build & Test Commands
+- C++ WASM build: `cd verbiste-wasm && ./build.sh` (requires Emscripten)
+- Rust WASM build: `cd verbiste-trie-rs && wasm-pack build --target web` 
+- Clean build artifacts: `cd verbiste-wasm && make clean`
+- Single test: `cd verbiste-trie-rs && cargo test test_name -- --nocapture`
+- All tests: `cd verbiste-trie-rs && cargo test`
+
+## Code Style Guidelines
+- **C++**: 2-space indentation, C++11 standard
+- **Rust**: Follow Rust standard style guide with 4-space indentation
+- **JavaScript**: 2-space indentation, ES6+ modern syntax
+- **Git**: Use Conventional Commits style (`feat:`, `fix:`, etc)
+  - Use Git trailers instead of inline attribution
+  - Example: `Co-authored-by: Name <email>`
+- **Error handling**: Use Result/Option in Rust, exceptions in C++
+- **Documentation**: Include JSDoc/RustDoc for all public functions
+- **WASM**: Export minimal interface, use proper memory management
+
+- See SETUP.org for environment setup instructions
+- Project organized in `verbiste-wasm/` (C++ implementation) and `verbiste-trie-rs/` (Rust implementation)
