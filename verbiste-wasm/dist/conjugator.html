@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>French Verb Conjugator</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        .verb-form {
+            margin-bottom: 20px;
+        }
+        
+        #suggestions {
+            background-color: #f5f5f5;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            max-height: 200px;
+            overflow-y: auto;
+            display: none;
+            position: absolute;
+            width: 300px;
+            z-index: 100;
+        }
+        
+        .suggestion {
+            padding: 8px 12px;
+            cursor: pointer;
+        }
+        
+        .suggestion:hover {
+            background-color: #e0e0e0;
+        }
+        
+        .conjugation-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        
+        .conjugation-table th, .conjugation-table td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+        }
+        
+        .conjugation-table th {
+            background-color: #f2f2f2;
+        }
+        
+        .tense-group {
+            margin-bottom: 20px;
+        }
+        
+        .tense-title {
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+    </style>
+</head>
+<body>
+    <h1>French Verb Conjugator</h1>
+    
+    <div class="verb-form">
+        <input type="text" id="verb-input" placeholder="Enter a French verb" style="width: 300px; padding: 8px;">
+        <div id="suggestions"></div>
+        <button id="conjugate-btn">Conjugate</button>
+    </div>
+    
+    <div id="conjugation-results"></div>
+    
+    <script type="module">
+        import VerbisteTrieModule from './verbiste-trie.js';
+        
+        // Sample conjugation data (in a real app, this would come from your WASM module)
+        const conjugationData = {
+            'parler': {
+                'présent': ['je parle', 'tu parles', 'il/elle parle', 'nous parlons', 'vous parlez', 'ils/elles parlent'],
+                'imparfait': ['je parlais', 'tu parlais', 'il/elle parlait', 'nous parlions', 'vous parliez', 'ils/elles parlaient'],
+                'futur': ['je parlerai', 'tu parleras', 'il/elle parlera', 'nous parlerons', 'vous parlerez', 'ils/elles parleront']
+            },
+            'finir': {
+                'présent': ['je finis', 'tu finis', 'il/elle finit', 'nous finissons', 'vous finissez', 'ils/elles finissent'],
+                'imparfait': ['je finissais', 'tu finissais', 'il/elle finissait', 'nous finissions', 'vous finissiez', 'ils/elles finissaient'],
+                'futur': ['je finirai', 'tu finiras', 'il/elle finira', 'nous finirons', 'vous finirez', 'ils/elles finiront']
+            },
+            'voir': {
+                'présent': ['je vois', 'tu vois', 'il/elle voit', 'nous voyons', 'vous voyez', 'ils/elles voient'],
+                'imparfait': ['je voyais', 'tu voyais', 'il/elle voyait', 'nous voyions', 'vous voyiez', 'ils/elles voyaient'],
+                'futur': ['je verrai', 'tu verras', 'il/elle verra', 'nous verrons', 'vous verrez', 'ils/elles verront']
+            }
+        };
+        
+        VerbisteTrieModule().then(module => {
+            const trie = new module.Trie();
+            
+            // Insert sample verbs into the trie
+            Object.keys(conjugationData).forEach(verb => {
+                trie.insert(verb);
+            });
+            
+            const verbInput = document.getElementById('verb-input');
+            const suggestionsDiv = document.getElementById('suggestions');
+            const conjugateBtn = document.getElementById('conjugate-btn');
+            const resultsDiv = document.getElementById('conjugation-results');
+            
+            // Show suggestions as the user types
+            verbInput.addEventListener('input', () => {
+                const prefix = verbInput.value.trim().toLowerCase();
+                if (prefix.length > 1) {
+                    const suggestions = trie.getSuggestions(prefix);
+                    
+                    if (suggestions.length > 0) {
+                        suggestionsDiv.innerHTML = '';
+                        suggestions.forEach(suggestion => {
+                            const div = document.createElement('div');
+                            div.className = 'suggestion';
+                            div.textContent = suggestion;
+                            div.addEventListener('click', () => {
+                                verbInput.value = suggestion;
+                                suggestionsDiv.style.display = 'none';
+                                displayConjugation(suggestion);
+                            });
+                            suggestionsDiv.appendChild(div);
+                        });
+                        suggestionsDiv.style.display = 'block';
+                    } else {
+                        suggestionsDiv.style.display = 'none';
+                    }
+                } else {
+                    suggestionsDiv.style.display = 'none';
+                }
+            });
+            
+            // Hide suggestions when clicking outside
+            document.addEventListener('click', (event) => {
+                if (event.target !== verbInput && event.target !== suggestionsDiv) {
+                    suggestionsDiv.style.display = 'none';
+                }
+            });
+            
+            // Conjugate button click handler
+            conjugateBtn.addEventListener('click', () => {
+                const verb = verbInput.value.trim().toLowerCase();
+                if (verb && trie.lookup(verb)) {
+                    displayConjugation(verb);
+                } else {
+                    resultsDiv.innerHTML = `<p>Verb "${verb}" not found. Please try another verb.</p>`;
+                }
+            });
+            
+            function displayConjugation(verb) {
+                if (conjugationData[verb]) {
+                    let html = `<h2>Conjugation of "${verb}"</h2>`;
+                    
+                    for (const [tense, forms] of Object.entries(conjugationData[verb])) {
+                        html += `
+                            <div class="tense-group">
+                                <div class="tense-title">${tense}</div>
+                                <table class="conjugation-table">
+                                    <tbody>
+                        `;
+                        
+                        forms.forEach(form => {
+                            html += `<tr><td>${form}</td></tr>`;
+                        });
+                        
+                        html += `
+                                    </tbody>
+                                </table>
+                            </div>
+                        `;
+                    }
+                    
+                    resultsDiv.innerHTML = html;
+                } else {
+                    resultsDiv.innerHTML = `<p>Conjugation data for "${verb}" is not available.</p>`;
+                }
+            }
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,603 @@
+#+TITLE: Verbiste Trie WASM Project Setup
+#+AUTHOR: jwalsh
+#+DATE: 2025-03-28
+
+* Project Overview
+
+This project creates a WebAssembly port of the Verbiste Trie implementation for French verb conjugation/deconjugation. We'll implement both C++ (Emscripten) and Rust (wasm-bindgen) approaches.
+
+* Project Structure
+
+** C++ Implementation with Emscripten
+
+*** Project Directory
+#+begin_src bash :tangle verbiste-wasm/setup.sh :mkdirp yes
+#!/bin/bash
+mkdir -p verbiste-wasm/{src,dist}
+#+end_src
+
+*** Trie Wrapper
+#+begin_src cpp :tangle verbiste-wasm/src/trie_wrapper.cpp :mkdirp yes
+#include <emscripten/bind.h>
+#include "/usr/local/include/verbiste-0.1/verbiste/Trie.h"
+
+using namespace emscripten;
+using namespace verbiste;
+
+EMSCRIPTEN_BINDINGS(trie_module) {
+    class_<Trie>("Trie")
+        .constructor<>()
+        .function("insert", &Trie::insert)
+        .function("lookup", &Trie::lookup)
+        .function("getSuggestions", &Trie::getSuggestions);
+}
+#+end_src
+
+*** Makefile
+#+begin_src makefile :tangle verbiste-wasm/Makefile :mkdirp yes
+CXX = em++
+CXXFLAGS = -std=c++11 -O2
+INCLUDE = -I/usr/local/include/verbiste-0.1
+LDFLAGS = -L/usr/local/lib -lverbiste-0.1
+EMFLAGS = -s WASM=1 -s MODULARIZE=1 -s EXPORT_ES6=1 -s EXPORTED_RUNTIME_METHODS=['ccall','cwrap']
+
+SRC_DIR = src
+DIST_DIR = dist
+
+all: $(DIST_DIR)/verbiste-trie.js
+
+$(DIST_DIR)/verbiste-trie.js: $(SRC_DIR)/trie_wrapper.cpp
+	$(CXX) $(CXXFLAGS) $(INCLUDE) $< -o $@ $(LDFLAGS) $(EMFLAGS)
+
+clean:
+	rm -f $(DIST_DIR)/*
+
+.PHONY: all clean
+#+end_src
+
+*** Test HTML
+#+begin_src html :tangle verbiste-wasm/dist/index.html :mkdirp yes
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Verbiste Trie WASM Test</title>
+</head>
+<body>
+    <h1>Verbiste Trie WASM Test</h1>
+    <input type="text" id="word" placeholder="Enter a word">
+    <button id="lookup">Lookup</button>
+    <button id="suggest">Get Suggestions</button>
+    <div id="result"></div>
+
+    <script type="module">
+        import VerbisteTrieModule from './verbiste-trie.js';
+
+        VerbisteTrieModule().then(module => {
+            const trie = new module.Trie();
+            
+            // Load some example words
+            ['parler', 'manger', 'finir', 'voir', 'être', 'avoir'].forEach(word => {
+                trie.insert(word);
+            });
+
+            document.getElementById('lookup').addEventListener('click', () => {
+                const word = document.getElementById('word').value;
+                const found = trie.lookup(word);
+                document.getElementById('result').textContent = found ? 
+                    `"${word}" was found in the trie` : 
+                    `"${word}" was not found in the trie`;
+            });
+
+            document.getElementById('suggest').addEventListener('click', () => {
+                const prefix = document.getElementById('word').value;
+                const suggestions = trie.getSuggestions(prefix);
+                document.getElementById('result').textContent = 
+                    `Suggestions for "${prefix}": ${suggestions.join(', ')}`;
+            });
+        });
+    </script>
+</body>
+</html>
+#+end_src
+
+*** Build Script
+#+begin_src bash :tangle verbiste-wasm/build.sh :mkdirp yes
+#!/bin/bash
+# Make sure emscripten is installed
+# sudo pkg install emscripten
+
+# Source emscripten environment if needed
+# source /usr/local/share/emscripten/emsdk_env.sh
+
+# Build the project
+make
+#+end_src
+
+** Rust Implementation with wasm-bindgen
+
+*** Project Setup
+#+begin_src bash :tangle verbiste-trie-rs/setup.sh :mkdirp yes
+#!/bin/bash
+cargo new verbiste-trie-rs --lib
+cd verbiste-trie-rs
+#+end_src
+
+*** Cargo.toml
+#+begin_src toml :tangle verbiste-trie-rs/Cargo.toml :mkdirp yes
+[package]
+name = "verbiste-trie-rs"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+wasm-bindgen = "0.2"
+js-sys = "0.3"
+
+[dev-dependencies]
+wasm-bindgen-test = "0.3"
+#+end_src
+
+*** Rust Trie Implementation
+#+begin_src rust :tangle verbiste-trie-rs/src/lib.rs :mkdirp yes
+use std::collections::HashMap;
+use wasm_bindgen::prelude::*;
+
+#[wasm_bindgen]
+pub struct TrieNode {
+    #[wasm_bindgen(skip)]
+    children: HashMap<char, TrieNode>,
+    is_end_of_word: bool,
+}
+
+#[wasm_bindgen]
+impl TrieNode {
+    #[wasm_bindgen(constructor)]
+    pub fn new() -> TrieNode {
+        TrieNode {
+            children: HashMap::new(),
+            is_end_of_word: false,
+        }
+    }
+}
+
+#[wasm_bindgen]
+pub struct Trie {
+    #[wasm_bindgen(skip)]
+    root: TrieNode,
+}
+
+#[wasm_bindgen]
+impl Trie {
+    #[wasm_bindgen(constructor)]
+    pub fn new() -> Trie {
+        Trie {
+            root: TrieNode::new(),
+        }
+    }
+
+    pub fn insert(&mut self, word: &str) {
+        let mut current = &mut self.root;
+        
+        for c in word.chars() {
+            current = current.children.entry(c).or_insert(TrieNode::new());
+        }
+        
+        current.is_end_of_word = true;
+    }
+
+    pub fn lookup(&self, word: &str) -> bool {
+        let mut current = &self.root;
+        
+        for c in word.chars() {
+            match current.children.get(&c) {
+                Some(node) => current = node,
+                None => return false,
+            }
+        }
+        
+        current.is_end_of_word
+    }
+
+    pub fn get_suggestions(&self, prefix: &str) -> Box<[JsValue]> {
+        let mut suggestions = Vec::new();
+        let mut current = &self.root;
+        
+        // Navigate to the end of the prefix
+        for c in prefix.chars() {
+            match current.children.get(&c) {
+                Some(node) => current = node,
+                None => return suggestions.into_boxed_slice(),
+            }
+        }
+        
+        // Find all words with this prefix
+        let mut prefix_chars: Vec<char> = prefix.chars().collect();
+        self.collect_suggestions(current, &mut prefix_chars, &mut suggestions);
+        
+        suggestions.into_boxed_slice()
+    }
+
+    fn collect_suggestions(&self, node: &TrieNode, prefix: &mut Vec<char>, suggestions: &mut Vec<JsValue>) {
+        if node.is_end_of_word {
+            let word: String = prefix.iter().collect();
+            suggestions.push(JsValue::from_str(&word));
+        }
+        
+        for (&c, child) in &node.children {
+            prefix.push(c);
+            self.collect_suggestions(child, prefix, suggestions);
+            prefix.pop();
+        }
+    }
+}
+#+end_src
+
+*** Rust Test HTML
+#+begin_src html :tangle verbiste-trie-rs/www/index.html :mkdirp yes
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Verbiste Trie Rust WASM Test</title>
+</head>
+<body>
+    <h1>Verbiste Trie Rust WASM Test</h1>
+    <input type="text" id="word" placeholder="Enter a word">
+    <button id="lookup">Lookup</button>
+    <button id="suggest">Get Suggestions</button>
+    <div id="result"></div>
+
+    <script type="module">
+        import init, { Trie } from '../pkg/verbiste_trie_rs.js';
+
+        init().then(() => {
+            const trie = new Trie();
+            
+            // Load some example words
+            ['parler', 'manger', 'finir', 'voir', 'être', 'avoir'].forEach(word => {
+                trie.insert(word);
+            });
+
+            document.getElementById('lookup').addEventListener('click', () => {
+                const word = document.getElementById('word').value;
+                const found = trie.lookup(word);
+                document.getElementById('result').textContent = found ? 
+                    `"${word}" was found in the trie` : 
+                    `"${word}" was not found in the trie`;
+            });
+
+            document.getElementById('suggest').addEventListener('click', () => {
+                const prefix = document.getElementById('word').value;
+                const suggestions = trie.get_suggestions(prefix);
+                document.getElementById('result').textContent = 
+                    `Suggestions for "${prefix}": ${Array.from(suggestions).join(', ')}`;
+            });
+        });
+    </script>
+</body>
+</html>
+#+end_src
+
+*** Build Script
+#+begin_src bash :tangle verbiste-trie-rs/build.sh :mkdirp yes
+#!/bin/bash
+# Make sure wasm-pack is installed
+# cargo install wasm-pack
+
+# Build the project
+wasm-pack build --target web
+
+# Create www directory if it doesn't exist
+mkdir -p www
+#+end_src
+
+* Integration Example
+
+We can create a more comprehensive example that shows how to integrate the Verbiste trie with a French verb conjugation interface:
+
+** French Verb Conjugator Interface
+#+begin_src html :tangle verbiste-wasm/dist/conjugator.html :mkdirp yes
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>French Verb Conjugator</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        .verb-form {
+            margin-bottom: 20px;
+        }
+        
+        #suggestions {
+            background-color: #f5f5f5;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            max-height: 200px;
+            overflow-y: auto;
+            display: none;
+            position: absolute;
+            width: 300px;
+            z-index: 100;
+        }
+        
+        .suggestion {
+            padding: 8px 12px;
+            cursor: pointer;
+        }
+        
+        .suggestion:hover {
+            background-color: #e0e0e0;
+        }
+        
+        .conjugation-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        
+        .conjugation-table th, .conjugation-table td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+        }
+        
+        .conjugation-table th {
+            background-color: #f2f2f2;
+        }
+        
+        .tense-group {
+            margin-bottom: 20px;
+        }
+        
+        .tense-title {
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+    </style>
+</head>
+<body>
+    <h1>French Verb Conjugator</h1>
+    
+    <div class="verb-form">
+        <input type="text" id="verb-input" placeholder="Enter a French verb" style="width: 300px; padding: 8px;">
+        <div id="suggestions"></div>
+        <button id="conjugate-btn">Conjugate</button>
+    </div>
+    
+    <div id="conjugation-results"></div>
+    
+    <script type="module">
+        import VerbisteTrieModule from './verbiste-trie.js';
+        
+        // Sample conjugation data (in a real app, this would come from your WASM module)
+        const conjugationData = {
+            'parler': {
+                'présent': ['je parle', 'tu parles', 'il/elle parle', 'nous parlons', 'vous parlez', 'ils/elles parlent'],
+                'imparfait': ['je parlais', 'tu parlais', 'il/elle parlait', 'nous parlions', 'vous parliez', 'ils/elles parlaient'],
+                'futur': ['je parlerai', 'tu parleras', 'il/elle parlera', 'nous parlerons', 'vous parlerez', 'ils/elles parleront']
+            },
+            'finir': {
+                'présent': ['je finis', 'tu finis', 'il/elle finit', 'nous finissons', 'vous finissez', 'ils/elles finissent'],
+                'imparfait': ['je finissais', 'tu finissais', 'il/elle finissait', 'nous finissions', 'vous finissiez', 'ils/elles finissaient'],
+                'futur': ['je finirai', 'tu finiras', 'il/elle finira', 'nous finirons', 'vous finirez', 'ils/elles finiront']
+            },
+            'voir': {
+                'présent': ['je vois', 'tu vois', 'il/elle voit', 'nous voyons', 'vous voyez', 'ils/elles voient'],
+                'imparfait': ['je voyais', 'tu voyais', 'il/elle voyait', 'nous voyions', 'vous voyiez', 'ils/elles voyaient'],
+                'futur': ['je verrai', 'tu verras', 'il/elle verra', 'nous verrons', 'vous verrez', 'ils/elles verront']
+            }
+        };
+        
+        VerbisteTrieModule().then(module => {
+            const trie = new module.Trie();
+            
+            // Insert sample verbs into the trie
+            Object.keys(conjugationData).forEach(verb => {
+                trie.insert(verb);
+            });
+            
+            const verbInput = document.getElementById('verb-input');
+            const suggestionsDiv = document.getElementById('suggestions');
+            const conjugateBtn = document.getElementById('conjugate-btn');
+            const resultsDiv = document.getElementById('conjugation-results');
+            
+            // Show suggestions as the user types
+            verbInput.addEventListener('input', () => {
+                const prefix = verbInput.value.trim().toLowerCase();
+                if (prefix.length > 1) {
+                    const suggestions = trie.getSuggestions(prefix);
+                    
+                    if (suggestions.length > 0) {
+                        suggestionsDiv.innerHTML = '';
+                        suggestions.forEach(suggestion => {
+                            const div = document.createElement('div');
+                            div.className = 'suggestion';
+                            div.textContent = suggestion;
+                            div.addEventListener('click', () => {
+                                verbInput.value = suggestion;
+                                suggestionsDiv.style.display = 'none';
+                                displayConjugation(suggestion);
+                            });
+                            suggestionsDiv.appendChild(div);
+                        });
+                        suggestionsDiv.style.display = 'block';
+                    } else {
+                        suggestionsDiv.style.display = 'none';
+                    }
+                } else {
+                    suggestionsDiv.style.display = 'none';
+                }
+            });
+            
+            // Hide suggestions when clicking outside
+            document.addEventListener('click', (event) => {
+                if (event.target !== verbInput && event.target !== suggestionsDiv) {
+                    suggestionsDiv.style.display = 'none';
+                }
+            });
+            
+            // Conjugate button click handler
+            conjugateBtn.addEventListener('click', () => {
+                const verb = verbInput.value.trim().toLowerCase();
+                if (verb && trie.lookup(verb)) {
+                    displayConjugation(verb);
+                } else {
+                    resultsDiv.innerHTML = `<p>Verb "${verb}" not found. Please try another verb.</p>`;
+                }
+            });
+            
+            function displayConjugation(verb) {
+                if (conjugationData[verb]) {
+                    let html = `<h2>Conjugation of "${verb}"</h2>`;
+                    
+                    for (const [tense, forms] of Object.entries(conjugationData[verb])) {
+                        html += `
+                            <div class="tense-group">
+                                <div class="tense-title">${tense}</div>
+                                <table class="conjugation-table">
+                                    <tbody>
+                        `;
+                        
+                        forms.forEach(form => {
+                            html += `<tr><td>${form}</td></tr>`;
+                        });
+                        
+                        html += `
+                                    </tbody>
+                                </table>
+                            </div>
+                        `;
+                    }
+                    
+                    resultsDiv.innerHTML = html;
+                } else {
+                    resultsDiv.innerHTML = `<p>Conjugation data for "${verb}" is not available.</p>`;
+                }
+            }
+        });
+    </script>
+</body>
+</html>
+#+end_src
+
+* Build and Run Instructions
+
+To build and run the C++ Emscripten version:
+
+#+begin_src bash :tangle verbiste-wasm/README.md :mkdirp yes
+# Verbiste Trie WASM (C++ Version)
+
+## Prerequisites
+
+- FreeBSD 14.2 or compatible system
+- Emscripten (install via `pkg install emscripten`)
+- The fr-verbiste package (install via `pkg install fr-verbiste`)
+
+## Building
+
+1. Make the build script executable:
+   ```
+   chmod +x build.sh
+   ```
+
+2. Run the build script:
+   ```
+   ./build.sh
+   ```
+
+## Running
+
+Serve the `dist` directory with a web server, for example:
+
+```
+cd dist
+python -m http.server
+```
+
+Then navigate to http://localhost:8000/ in your browser.
+#+end_src
+
+To build and run the Rust version:
+
+#+begin_src bash :tangle verbiste-trie-rs/README.md :mkdirp yes
+# Verbiste Trie WASM (Rust Version)
+
+## Prerequisites
+
+- FreeBSD 14.2 or compatible system
+- Rust/Cargo (install via `pkg install rust`)
+- wasm-pack (install via `cargo install wasm-pack`)
+
+## Building
+
+1. Make the build script executable:
+   ```
+   chmod +x build.sh
+   ```
+
+2. Run the build script:
+   ```
+   ./build.sh
+   ```
+
+## Running
+
+Serve the project directory with a web server, for example:
+
+```
+cd www
+python -m http.server
+```
+
+Then navigate to http://localhost:8000/ in your browser.
+#+end_src
+
+* System Diagram
+
+Here's a visual representation of the project architecture:
+
+#+begin_src mermaid :file verbiste-wasm-architecture.png
+graph TD
+    subgraph "C++ Implementation"
+        A[Verbiste Trie.cpp/h] --> B[Emscripten Wrapper]
+        B --> C[WASM Module]
+        C --> D[JavaScript API]
+        D --> E[Web Application]
+    end
+    
+    subgraph "Rust Implementation"
+        F[Rust Trie Implementation] --> G[wasm-bindgen]
+        G --> H[WASM Module]
+        H --> I[JavaScript API]
+        I --> J[Web Application]
+    end
+    
+    K[French Verb Data] --> E
+    K --> J
+#+end_src
+
+* Notes on Implementation
+
+1. The C++ implementation directly uses the Verbiste Trie implementation, which might need some modifications to work properly with Emscripten.
+2. The Rust implementation is a clean-room implementation of a Trie data structure, optimized for WASM.
+3. In a production environment, you'd want to parse the XML verb data from Verbiste to populate the Trie.
+4. Both implementations provide a similar JavaScript API for consistency.
+#+begin_src bash :tangle make_executable.sh :mkdirp yes
+#!/bin/bash
+chmod +x verbiste-wasm/setup.sh
+chmod +x verbiste-wasm/build.sh
+chmod +x verbiste-trie-rs/setup.sh
+chmod +x verbiste-trie-rs/build.sh
+chmod +x make_executable.sh
+echo "Made scripts executable"
+#+end_src

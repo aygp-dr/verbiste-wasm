@@ -1,0 +1,43 @@
+# Dependencies
+node_modules
+npm-debug.log
+yarn-error.log
+yarn-debug.log
+package-lock.json
+yarn.lock
+
+# Build outputs
+/dist
+/build
+/out
+/lib
+/target
+*.o
+*.so
+*.a
+*.wasm
+
+# Environment
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+.envrc
+.direnv
+
+# IDEs and editors
+/.idea
+/.vscode
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Testing
+/coverage
+/.nyc_output
+
+# Temporary files
+/tmp
+/temp

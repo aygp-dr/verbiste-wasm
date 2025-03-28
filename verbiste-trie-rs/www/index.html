@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Verbiste Trie Rust WASM Test</title>
+</head>
+<body>
+    <h1>Verbiste Trie Rust WASM Test</h1>
+    <input type="text" id="word" placeholder="Enter a word">
+    <button id="lookup">Lookup</button>
+    <button id="suggest">Get Suggestions</button>
+    <div id="result"></div>
+
+    <script type="module">
+        import init, { Trie } from '../pkg/verbiste_trie_rs.js';
+
+        init().then(() => {
+            const trie = new Trie();
+            
+            // Load some example words
+            ['parler', 'manger', 'finir', 'voir', 'être', 'avoir'].forEach(word => {
+                trie.insert(word);
+            });
+
+            document.getElementById('lookup').addEventListener('click', () => {
+                const word = document.getElementById('word').value;
+                const found = trie.lookup(word);
+                document.getElementById('result').textContent = found ? 
+                    `"${word}" was found in the trie` : 
+                    `"${word}" was not found in the trie`;
+            });
+
+            document.getElementById('suggest').addEventListener('click', () => {
+                const prefix = document.getElementById('word').value;
+                const suggestions = trie.get_suggestions(prefix);
+                document.getElementById('result').textContent = 
+                    `Suggestions for "${prefix}": ${Array.from(suggestions).join(', ')}`;
+            });
+        });
+    </script>
+</body>
+</html>

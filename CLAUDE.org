@@ -1,0 +1,6 @@
+# Project Guidelines
+
+## Key Requirements
+- Use Conventional Commits style for commit messages
+- Use `--trailer` for attribution instead of "Created by" in commit footers
+- Avoid all interactive commands (rebase -i, sudo with password prompts, non-batch emacs, etc.)
