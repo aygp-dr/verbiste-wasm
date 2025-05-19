@@ -1,0 +1,118 @@
+#+TITLE: Verbiste-WASM 
+#+AUTHOR: aygp-dr
+#+DATE: 2025-05-18
+#+PROPERTY: header-args :mkdirp yes
+
+* Verbiste-WASM: French Verb Conjugation Library for WebAssembly
+
+This project is a WebAssembly port of [[https://freebsd.pkgs.org/13/freebsd-amd64/fr-verbiste-0.1.49.pkg.html][Verbiste]], a French verb conjugation and deconjugation library. It provides both C++ (via Emscripten) and Rust (via wasm-bindgen) implementations for use in web applications.
+
+** Current Status
+
+The project is currently in MVP (Minimum Viable Product) stage with the following features:
+
+- Basic Trie implementation for efficient string lookup
+- French verb dictionary loaded from XML files
+- Auto-suggestions for verb prefixes
+- Simple web interface for searching French verbs
+
+** Project Structure
+
+- =verbiste-wasm/= - C++ implementation using Emscripten
+- =verbiste-trie-rs/= - Rust implementation using wasm-bindgen
+- =resources/= - Contains the original Verbiste source and XML data files
+
+** Prerequisites
+
+- Emscripten (for C++ implementation)
+- Rust and wasm-pack (for Rust implementation)
+- Python (for local development server)
+
+*** Checking Dependencies
+
+You can check if all required tools are installed by running:
+
+#+begin_src bash
+./deps.sh
+#+end_src
+
+This script will:
+- Check for essential dependencies (git, python, make)
+- Check for WebAssembly toolchain (Emscripten, Rust/wasm-pack)
+- Verify XML data files availability
+- Provide installation instructions for missing dependencies
+
+Even without Emscripten or wasm-pack, you can still build and run the project using JavaScript mocks.
+
+** Quick Start
+
+1. Download the Verbiste source archive (contains XML data files):
+   #+begin_src bash
+   make resources
+   #+end_src
+
+2. Build and run the C++ implementation with mock support (no Emscripten required):
+   #+begin_src bash
+   cd verbiste-wasm
+   chmod +x build.sh serve.sh
+   ./build.sh
+   ./serve.sh
+   #+end_src
+   
+   Then open http://localhost:8000 in your browser.
+
+3. If Emscripten is installed, the build.sh script will automatically use it to compile real WebAssembly. Otherwise, it will fall back to a JavaScript mock implementation.
+
+4. To build all implementations (both C++ and Rust):
+   #+begin_src bash
+   make
+   #+end_src
+   
+   Note: For the full build, you'll need both Emscripten and Rust/wasm-pack installed.
+
+** Features
+
+- Trie-based efficient lookup of French verbs
+- Verb conjugation and deconjugation
+- Word suggestions based on prefixes
+- Lightweight WebAssembly implementation for browser usage
+
+** Implementation Details
+
+*** C++ Version
+
+The C++ implementation uses Emscripten to compile the Verbiste Trie implementation to WebAssembly. It provides a JavaScript API to interact with the Trie functionality.
+
+*** Rust Version
+
+The Rust implementation is a clean-room implementation of a Trie data structure optimized for WebAssembly. It uses wasm-bindgen to expose the functionality to JavaScript.
+
+** Usage Example
+
+#+begin_src javascript
+// Example usage (C++ version)
+import VerbisteTrieModule from './verbiste-trie.js';
+
+VerbisteTrieModule().then(module => {
+    const trie = new module.Trie();
+    
+    // Add some verbs
+    trie.insert("parler");
+    trie.insert("manger");
+    
+    // Look up a verb
+    const found = trie.lookup("parler");  // true
+    
+    // Get suggestions for a prefix
+    const suggestions = trie.getSuggestions("pa");  // ["parler"]
+});
+#+end_src
+
+** License
+
+This project is licensed under the same terms as the original Verbiste library.
+
+** Acknowledgments
+
+- The original Verbiste project
+- The Emscripten and wasm-bindgen projects for making WebAssembly easier to work with

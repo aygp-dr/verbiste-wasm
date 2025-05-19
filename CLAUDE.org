@@ -1,27 +1,72 @@
-# Project Guidelines
+#+TITLE: Verbiste WASM Project Guidelines
+#+AUTHOR: aygp-dr
+#+DATE: 2025-05-18
+#+PROPERTY: header-args :mkdirp yes
 
-## :important: Key Requirements
+* Project Guidelines
+
+** Key Requirements
 - Use Conventional Commits style for commit messages
-- Use `--trailer` for attribution instead of "Created by" in commit footers
-- Avoid all interactive commands (rebase -i, sudo with password prompts, non-batch emacs, etc.)
+- Use =--trailer= for attribution instead of "Created by" in commit footers
+- Avoid all interactive commands (rebase -i, sudo with password prompts, etc.)
+- Focus on MVP first: basic Trie implementation with French verb lookup
 
-## Build & Test Commands
-- C++ WASM build: `cd verbiste-wasm && ./build.sh` (requires Emscripten)
-- Rust WASM build: `cd verbiste-trie-rs && wasm-pack build --target web` 
-- Clean build artifacts: `cd verbiste-wasm && make clean`
-- Single test: `cd verbiste-trie-rs && cargo test test_name -- --nocapture`
-- All tests: `cd verbiste-trie-rs && cargo test`
+** Build & Test Commands
+- Check dependencies: =./deps.sh=
+- Download source archive: =make resources=
+- C++ WASM build: =cd verbiste-wasm && ./build.sh= (uses mock if Emscripten not found)
+- Force mock build: =cd verbiste-wasm && make mock=
+- Run test server: =cd verbiste-wasm && ./serve.sh=
+- Rust WASM build: =cd verbiste-trie-rs && wasm-pack build --target web= 
+- Clean build artifacts: =cd verbiste-wasm && make clean=
+- Single test: =cd verbiste-trie-rs && cargo test test_name -- --nocapture=
+- All tests: =cd verbiste-trie-rs && cargo test=
 
-## Code Style Guidelines
-- **C++**: 2-space indentation, C++11 standard
-- **Rust**: Follow Rust standard style guide with 4-space indentation
-- **JavaScript**: 2-space indentation, ES6+ modern syntax
-- **Git**: Use Conventional Commits style (`feat:`, `fix:`, etc)
+** Code Style Guidelines
+- *C++*: 2-space indentation, C++17 standard
+- *Rust*: Follow Rust standard style guide with 4-space indentation
+- *JavaScript*: 2-space indentation, ES6+ modern syntax
+- *Git*: Use Conventional Commits style (=feat:=, =fix:=, etc)
   - Use Git trailers instead of inline attribution
-  - Example: `Co-authored-by: Name <email>`
-- **Error handling**: Use Result/Option in Rust, exceptions in C++
-- **Documentation**: Include JSDoc/RustDoc for all public functions
-- **WASM**: Export minimal interface, use proper memory management
+  - Example: =Co-authored-by: Name <email>=
+- *Error handling*: Use Result/Option in Rust, exceptions in C++
+- *Documentation*: Include JSDoc/RustDoc for all public functions
+- *WASM*: Export minimal interface, use proper memory management
 
-- See SETUP.org for environment setup instructions
-- Project organized in `verbiste-wasm/` (C++ implementation) and `verbiste-trie-rs/` (Rust implementation)
+* Project Structure
+- =verbiste-wasm/= - C++ implementation using Emscripten
+- =verbiste-trie-rs/= - Rust implementation using wasm-bindgen
+- =resources/= - Contains the original Verbiste source and XML data files
+
+* Architecture Notes
+
+** Core Components
+- Trie implementation for efficient string lookup
+- French verb dictionary loaded from XML files
+- Conjugation templates for verb forms
+- JavaScript API for web integration
+
+** Data Flow
+1. Load XML data files
+2. Parse verb and conjugation data
+3. Build Trie structures for lookups
+4. Expose API through JavaScript bindings
+
+* Future Enhancements
+
+** Next Steps
+- Complete conjugation functionality
+- Add deconjugation (identify verbs from conjugated forms)
+- Create more comprehensive examples
+- Add error handling and validation
+
+** Advanced Features
+- Support for multiple languages (Italian already in Verbiste)
+- Optimizations for memory usage
+- Progressive loading of large verb dictionaries
+- React/Vue/Angular component wrappers
+
+* Resources
+- [[https://freebsd.pkgs.org/13/freebsd-amd64/fr-verbiste-0.1.49.pkg.html][Original Verbiste package]]
+- [[https://developer.mozilla.org/en-US/docs/WebAssembly/Guides/Existing_C_to_Wasm][MDN: Compiling C/C++ to WebAssembly]]
+- [[https://rustwasm.github.io/docs/book/][Rust and WebAssembly]]
