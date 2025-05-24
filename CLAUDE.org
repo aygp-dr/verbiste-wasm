@@ -13,12 +13,15 @@
 
 ** Build & Test Commands
 - Check dependencies: =./deps.sh=
+- Install dependencies: =make deps=
 - Download source archive: =make resources=
-- C++ WASM build: =cd verbiste-wasm && ./build.sh= (uses mock if Emscripten not found)
-- Force mock build: =cd verbiste-wasm && make mock=
+- Setup project: =make setup=
+- Build all: =make all= or just =make=
+- Build C++ only: =make build-cpp=
+- Build Rust only: =make build-rust=
 - Run test server: =cd verbiste-wasm && ./serve.sh=
-- Rust WASM build: =cd verbiste-trie-rs && wasm-pack build --target web= 
-- Clean build artifacts: =cd verbiste-wasm && make clean=
+- Clean all: =make clean=
+- Force mock build: =cd verbiste-wasm && make mock=
 - Single test: =cd verbiste-trie-rs && cargo test test_name -- --nocapture=
 - All tests: =cd verbiste-trie-rs && cargo test=
 

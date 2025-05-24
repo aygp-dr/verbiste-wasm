@@ -1,10 +1,10 @@
 CXX = em++
-CXXFLAGS = -std=c++17 -O2 
+CXXFLAGS = -std=c++17 -O2
 # No need for verbiste-0.1 include since we're implementing our own Trie
-EMFLAGS = -s WASM=1 -s MODULARIZE=1 -s EXPORT_ES6=1 -s EXPORTED_RUNTIME_METHODS=['ccall','cwrap'] \
+EMFLAGS = -s WASM=1 -s MODULARIZE=1 -s EXPORT_ES6=1 \
           -s ALLOW_MEMORY_GROWTH=1 -s ASSERTIONS=1 \
-          -s "EXPORTED_FUNCTIONS=['_trieInsert','_trieLookup','_trieGetSuggestions','_verbAdapterExtractVerbsFromXML','_verbAdapterGetVerbCount','_verbAdapterGetAllVerbs']" \
-          -s "EXPORTED_RUNTIME_METHODS=['stringToUTF8','UTF8ToString']"
+          -s "EXPORTED_RUNTIME_METHODS=['ccall','cwrap','stringToUTF8','UTF8ToString']" \
+          --bind
 
 SRC_DIR = src
 DIST_DIR = dist

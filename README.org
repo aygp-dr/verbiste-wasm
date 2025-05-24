@@ -46,29 +46,46 @@ Even without Emscripten or wasm-pack, you can still build and run the project us
 
 ** Quick Start
 
-1. Download the Verbiste source archive (contains XML data files):
+1. Install dependencies (optional, for full build):
+   #+begin_src bash
+   make deps
+   #+end_src
+
+2. Download the Verbiste source archive (contains XML data files):
    #+begin_src bash
    make resources
    #+end_src
 
-2. Build and run the C++ implementation with mock support (no Emscripten required):
+3. Set up the project:
+   #+begin_src bash
+   make setup
+   #+end_src
+
+4. Build all implementations (both C++ and Rust):
+   #+begin_src bash
+   make all
+   #+end_src
+   
+   Or build specific implementations:
+   #+begin_src bash
+   make build-cpp  # Build C++ version only
+   make build-rust # Build Rust version only
+   #+end_src
+
+5. Run the C++ implementation:
    #+begin_src bash
    cd verbiste-wasm
-   chmod +x build.sh serve.sh
-   ./build.sh
    ./serve.sh
    #+end_src
    
    Then open http://localhost:8000 in your browser.
 
-3. If Emscripten is installed, the build.sh script will automatically use it to compile real WebAssembly. Otherwise, it will fall back to a JavaScript mock implementation.
-
-4. To build all implementations (both C++ and Rust):
+6. Clean build artifacts:
    #+begin_src bash
-   make
+   make clean
    #+end_src
-   
-   Note: For the full build, you'll need both Emscripten and Rust/wasm-pack installed.
+
+Note: If Emscripten is not installed, the C++ build will automatically fall back to a JavaScript mock implementation.
 
 ** Features
 

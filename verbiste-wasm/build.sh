@@ -36,14 +36,15 @@ fi
 echo "Checking for em++ in PATH..."
 which em++ || echo "em++ not found in PATH"
 
-# Skip the test for now and use mock implementation
+# For now, use the mock implementation for the prototype
 if command -v em++ >/dev/null 2>&1; then
-  echo "Emscripten found at $(which em++), but using mock implementation for prototype..."
-  # In a real environment, we would want to fully set up Emscripten with proper config
-  make mock
+  echo "Emscripten found at $(which em++), but using mock implementation for the prototype."
+  echo "This is a reliable approach until Emscripten/Binaryen are fully configured."
 else
   echo "Emscripten not found. Using mock implementation..."
-  make mock
 fi
+
+# Build with mock implementation
+make mock
 
 echo "Build complete! Use ./serve.sh to run the demo."
